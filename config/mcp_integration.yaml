@@ -1,0 +1,51 @@
+mcp_server:
+  mode: openapi            # 'openapi' (HTTP proxy via mcpo) or 'stdio' (direct MCP)
+  base_url: "http://localhost:8811"  # Change to your public URL or tunnel host when remote
+  authentication:
+    type: none             # 'none' or 'api_key'
+    api_key: "${MCP_API_KEY}"  # If using API key auth on your proxy
+  connection:
+    timeout: 300
+    retry_attempts: 3
+    pool_size: 5
+    keep_alive: true
+  features:
+    batch_operations: true
+    streaming_responses: true
+    async_operations: true
+    command_optimization: true
+
+# Natural-language templates → structured MCP tool intents
+command_templates:
+  get_nodes: "Show me all Proxmox nodes with their health and key metrics"
+  get_vms: "Show me all virtual machines with their status and resource usage"
+  get_vm_status: "Get current status for VM {vmid} on node {node}"
+  get_vm_snapshots: "List snapshots for VM {vmid} on node {node}"
+  create_vm: "Create a VM '{name}' (vmid {vmid}) on {node} with {cpus} CPU, {memory}MB RAM, {disk_size}GB disk{storage_clause}{ostype_clause}"
+  delete_vm: "Delete VM {vmid} on node {node}{force_clause}"
+  update_vm_config: "Update VM {vmid} on {node} with changes: {changes}"
+  resize_vm_disk: "Resize disk {disk} on VM {vmid} to {size}"
+  clone_vm: "Clone VM {vmid} from {node} to {target}{newid_clause}{name_clause}{full_clause}{storage_clause}"
+  migrate_vm: "Migrate VM {vmid} from {node} to {target}{online_clause}"
+  execute_vm_command: "Execute '{command}' on VM {vmid} on node {node}"
+  vm_vncproxy: "Open VNC console for VM {vmid} on {node}"
+  vm_spiceproxy: "Open SPICE console for VM {vmid} on {node}"
+  get_storage: "Show all storages and their utilization"
+  get_storage_content: "List content of storage {storage} on node {node}"
+  delete_storage_content: "Delete storage volume {volume} from {storage} on {node}"
+  upload_storage_content: "Upload {content} '{filename}' to storage {storage} on {node} from path {file_path}"
+  get_cluster_status: "Show overall cluster status and quorum"
+  get_cluster_resources: "Show cluster resources overview"
+  get_version: "Show Proxmox API version"
+
+# Optional string fragments used by templates (client can expand conditionally)
+fragments:
+  storage_clause: " using storage {storage}"
+  ostype_clause: " and OS type {ostype}"
+  force_clause: " (force=true)"
+  newid_clause: " with new vmid {newid}"
+  name_clause: " and name '{name}'"
+  full_clause: " (full clone)"
+  online_clause: " (online)"
+
+
