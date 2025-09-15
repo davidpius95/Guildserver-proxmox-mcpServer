@@ -12,6 +12,7 @@ interactions, ensuring consistent connection handling and authentication
 across the MCP server.
 """
 import logging
+import os
 from typing import Dict, Any
 from proxmoxer import ProxmoxAPI
 from ..config.models import ProxmoxConfig, AuthConfig
@@ -57,11 +58,26 @@ class ProxmoxManager:
         Returns:
             Dictionary containing merged configuration ready for API initialization
         """
+        # Sanitize token_name: it must be only the token ID (without 'user@realm!')
+        token_name = auth_config.token_name
+        user = auth_config.user
+        try:
+            prefix = f"{user}!"
+            if isinstance(token_name, str) and token_name.startswith(prefix):
+                # Example input: 'root@pam!terraform' → 'terraform'
+                token_name = token_name[len(prefix):]
+                self.logger.warning(
+                    "Sanitized token_name by removing user prefix; ensure your config uses only the token ID."
+                )
+        except Exception:
+            # Fall back to provided token_name
+            token_name = auth_config.token_name
+
         return {
             'host': proxmox_config.host,
             'port': proxmox_config.port,
-            'user': auth_config.user,
-            'token_name': auth_config.token_name,
+            'user': user,
+            'token_name': token_name,
             'token_value': auth_config.token_value,
             'verify_ssl': proxmox_config.verify_ssl,
             'service': proxmox_config.service
@@ -89,11 +105,17 @@ class ProxmoxManager:
         try:
             self.logger.info(f"Connecting to Proxmox host: {self.config['host']}")
             api = ProxmoxAPI(**self.config)
-            
+
+            # Optionally skip initial connectivity test for IDE/desktop MCP integrations
+            skip_test = os.getenv("PROXMOX_MCP_SKIP_CONNECT_TEST", "").lower() in {"1", "true", "yes"}
+            if skip_test:
+                self.logger.info("Skipping initial Proxmox connection test (PROXMOX_MCP_SKIP_CONNECT_TEST=1)")
+                return api
+
             # Test connection
             api.version.get()
             self.logger.info("Successfully connected to Proxmox API")
-            
+
             return api
         except Exception as e:
             self.logger.error(f"Failed to connect to Proxmox: {e}")

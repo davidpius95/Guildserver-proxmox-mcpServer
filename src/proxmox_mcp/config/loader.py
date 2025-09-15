@@ -60,7 +60,36 @@ def load_config(config_path: Optional[str] = None) -> Config:
                  - Field values are invalid
     """
     if not config_path:
-        raise ValueError("PROXMOX_MCP_CONFIG environment variable must be set")
+        # Fallback to environment variables for configuration
+        host = os.getenv("PROXMOX_HOST")
+        user = os.getenv("PROXMOX_USER")
+        token_name = os.getenv("PROXMOX_TOKEN_NAME")
+        token_value = os.getenv("PROXMOX_TOKEN_VALUE")
+        port = int(os.getenv("PROXMOX_PORT", "8006"))
+        verify_ssl = os.getenv("PROXMOX_VERIFY_SSL", "true").lower() == "true"
+        service = os.getenv("PROXMOX_SERVICE", "PVE")
+        log_level = os.getenv("LOG_LEVEL", "INFO")
+
+        if not (host and user and token_name and token_value):
+            raise ValueError("PROXMOX_MCP_CONFIG environment variable must be set")
+
+        env_config = {
+            "proxmox": {
+                "host": host,
+                "port": port,
+                "verify_ssl": verify_ssl,
+                "service": service,
+            },
+            "auth": {
+                "user": user,
+                "token_name": token_name,
+                "token_value": token_value,
+            },
+            "logging": {
+                "level": log_level,
+            },
+        }
+        return Config(**env_config)
 
     try:
         with open(config_path) as f:

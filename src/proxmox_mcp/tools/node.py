@@ -13,6 +13,7 @@ The tools handle both basic and detailed node information retrieval,
 with fallback mechanisms for partial data availability.
 """
 from typing import List
+import json
 from mcp.types import TextContent as Content
 from .base import ProxmoxTool
 from .definitions import GET_NODES_DESC, GET_NODE_STATUS_DESC
@@ -60,42 +61,7 @@ class NodeTools(ProxmoxTool):
         """
         try:
             result = self.proxmox.nodes.get()
-            nodes = []
-            
-            # Get detailed info for each node
-            for node in result:
-                node_name = node["node"]
-                try:
-                    # Get detailed status for each node
-                    status = self.proxmox.nodes(node_name).status.get()
-                    nodes.append({
-                        "node": node_name,
-                        "status": node["status"],
-                        "uptime": status.get("uptime", 0),
-                        "maxcpu": status.get("cpuinfo", {}).get("cpus", "N/A"),
-                        "memory": {
-                            "used": status.get("memory", {}).get("used", 0),
-                            "total": status.get("memory", {}).get("total", 0)
-                        }
-                    })
-                except Exception:
-                    # Fallback to basic info if detailed status fails
-                    nodes.append({
-                        "node": node_name,
-                        "status": node["status"],
-                        "uptime": 0,
-                        "maxcpu": "N/A",
-                        "memory": {
-                            # The nodes.get() API already returns memory usage
-                            # in the "mem" field, so use that directly. The
-                            # previous implementation subtracted this value
-                            # from "maxmem" which actually produced the amount
-                            # of *free* memory instead of the used memory.
-                            "used": node.get("mem", 0),
-                            "total": node.get("maxmem", 0)
-                        }
-                    })
-            return self._format_response(nodes, "nodes")
+            return [Content(type="text", text=json.dumps(result))]
         except Exception as e:
             self._handle_error("get nodes", e)
 
@@ -135,6 +101,28 @@ class NodeTools(ProxmoxTool):
         """
         try:
             result = self.proxmox.nodes(node).status.get()
-            return self._format_response((node, result), "node_status")
+            return [Content(type="text", text=json.dumps(result))]
         except Exception as e:
             self._handle_error(f"get status for node {node}", e)
+
+    def get_task_status(self, node: str, upid: str) -> List[Content]:
+        """Get task status by UPID.
+
+        Maps to: GET /nodes/{node}/tasks/{upid}/status
+        """
+        try:
+            result = self.proxmox.nodes(node).tasks(upid).status.get()
+            return [Content(type="text", text=json.dumps(result))]
+        except Exception as e:
+            self._handle_error(f"get task status {upid} on node {node}", e)
+
+    def get_task_log(self, node: str, upid: str) -> List[Content]:
+        """Get task log by UPID.
+
+        Maps to: GET /nodes/{node}/tasks/{upid}/log
+        """
+        try:
+            result = self.proxmox.nodes(node).tasks(upid).log.get()
+            return [Content(type="text", text=json.dumps(result))]
+        except Exception as e:
+            self._handle_error(f"get task log {upid} on node {node}", e)

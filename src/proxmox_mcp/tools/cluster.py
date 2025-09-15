@@ -11,6 +11,7 @@ The tools provide essential information for maintaining
 cluster health and ensuring proper operation.
 """
 from typing import List
+import json
 from mcp.types import TextContent as Content
 from .base import ProxmoxTool
 from .definitions import GET_CLUSTER_STATUS_DESC
@@ -65,14 +66,28 @@ class ClusterTools(ProxmoxTool):
         """
         try:
             result = self.proxmox.cluster.status.get()
-        
-            first_item = result[0] if result and len(result) > 0 else {}
-            status = {
-                "name": first_item.get("name") if first_item else None,
-                "quorum": first_item.get("quorate") if first_item else None,
-                "nodes": len([node for node in result if node.get("type") == "node"]) if result else 0,
-                "resources": [res for res in result if res.get("type") == "resource"] if result else []
-            }
-            return self._format_response(status, "cluster")
+            return [Content(type="text", text=json.dumps(result))]
         except Exception as e:
             self._handle_error("get cluster status", e)
+
+    def get_cluster_resources(self) -> List[Content]:
+        """Return cluster-wide resource view.
+
+        Maps to: GET /cluster/resources
+        """
+        try:
+            result = self.proxmox.cluster.resources.get()
+            return [Content(type="text", text=json.dumps(result))]
+        except Exception as e:
+            self._handle_error("get cluster resources", e)
+
+    def get_version(self) -> List[Content]:
+        """Expose Proxmox API version info.
+
+        Maps to: GET /version
+        """
+        try:
+            result = self.proxmox.version.get()
+            return [Content(type="text", text=json.dumps(result))]
+        except Exception as e:
+            self._handle_error("get version", e)

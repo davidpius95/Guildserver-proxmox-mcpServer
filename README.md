@@ -67,6 +67,11 @@ This project is built upon the excellent open-source project [ProxmoxMCP](https:
 - 🌐 OpenAPI REST endpoints for integration
 - 📡 11 fully functional API endpoints
 
+### Quick Links
+
+- Integrations (Claude, Cursor, OpenAPI): see INTEGRATIONS.md
+- Public deployment guide: see PUBLIC_DEPLOYMENT.md
+
 
 ## Installation
 
@@ -239,6 +244,8 @@ For Cline users, add this configuration to your MCP settings file (typically at 
 
 ## Available Tools & API Endpoints
 
+See also: Proxmox API Coverage matrix in [PROXMOX_API_COVERAGE.md](./PROXMOX_API_COVERAGE.md)
+
 The server provides 11 comprehensive MCP tools and corresponding REST API endpoints:
 
 ### VM Management Tools
@@ -327,6 +334,14 @@ POST /delete_vm
 List all LXC containers across the cluster.
 
 **API Endpoint:** `POST /get_containers`
+#### get_container_status 🆕
+Get status/current for a container.
+
+**API Endpoint:** `POST /get_container_status`
+#### get_container_status 🆕
+Get status/current for a container.
+
+**API Endpoint:** `POST /get_container_status`
 
 **Example Response:**
 ```
@@ -370,15 +385,35 @@ List all VMs across the cluster.
 
 **API Endpoint:** `POST /get_vms`
 
+#### get_vm_status 🆕
+Get current status for a VM.
+
+**API Endpoint:** `POST /get_vm_status`
+
+#### get_vm_snapshots 🆕
+List snapshots for a VM.
+
+**API Endpoint:** `POST /get_vm_snapshots`
+
 #### get_storage
 List available storage pools.
 
 **API Endpoint:** `POST /get_storage`
 
+#### get_storage_content 🆕
+List storage content for a specific storage on a node.
+
+**API Endpoint:** `POST /get_storage_content`
+
 #### get_cluster_status
 Get overall cluster status and health.
 
 **API Endpoint:** `POST /get_cluster_status`
+
+#### get_cluster_resources 🆕
+Get cluster resource view.
+
+**API Endpoint:** `POST /get_cluster_resources`
 
 #### execute_vm_command
 Execute a command in a VM's console using QEMU Guest Agent.
@@ -389,6 +424,162 @@ Execute a command in a VM's console using QEMU Guest Agent.
 - `command` (string, required): Command to execute
 
 **API Endpoint:** `POST /execute_vm_command`
+
+### Administrative Tools (Node)
+
+#### list_services 🆕
+List system services on a node.
+
+**API Endpoint:** `POST /list_services`
+
+#### service_action 🆕
+Start/stop/restart a node service.
+
+**API Endpoint:** `POST /service_action`
+
+#### network_get 🆕
+Get node network configuration.
+
+**API Endpoint:** `POST /network_get`
+
+#### network_apply 🆕
+Apply node network configuration.
+
+**API Endpoint:** `POST /network_apply`
+
+#### list_updates 🆕
+List available package updates on a node.
+
+**API Endpoint:** `POST /list_updates`
+
+#### list_repositories 🆕
+List APT repositories on a node.
+
+**API Endpoint:** `POST /list_repositories`
+
+#### get_certificates 🆕
+Get TLS certificates info.
+
+**API Endpoint:** `POST /get_certificates`
+
+#### list_disks 🆕
+List disks on a node.
+
+**API Endpoint:** `POST /list_disks`
+
+### Access Control
+
+#### list_users / create_user / update_user / delete_user 🆕
+User management wrappers.
+
+**API Endpoints:** `POST /list_users`, `POST /create_user`, `POST /update_user`, `POST /delete_user`
+
+#### list_groups / create_group / delete_group 🆕
+Group management.
+
+**API Endpoints:** `POST /list_groups`, `POST /create_group`, `POST /delete_group`
+
+#### list_roles / create_role / delete_role 🆕
+Role management.
+
+**API Endpoints:** `POST /list_roles`, `POST /create_role`, `POST /delete_role`
+
+#### get_acl / set_acl 🆕
+Manage ACL entries.
+
+**API Endpoints:** `POST /get_acl`, `POST /set_acl`
+
+### Datacenter Firewall (subset)
+
+#### list_dc_firewall_rules / add_dc_firewall_rule / delete_dc_firewall_rule 🆕
+Manage DC-level firewall rules.
+
+**API Endpoints:** `POST /list_dc_firewall_rules`, `POST /add_dc_firewall_rule`, `POST /delete_dc_firewall_rule`
+
+### Pools
+
+#### list_pools / create_pool / delete_pool 🆕
+Pool management.
+
+**API Endpoints:** `POST /list_pools`, `POST /create_pool`, `POST /delete_pool`
+
+### Backups
+
+#### vzdump 🆕
+Trigger a VZDump backup job on a node.
+
+**API Endpoint:** `POST /vzdump`
+
+### High Availability (HA)
+
+#### ha_list_groups / ha_create_group 🆕
+List/create HA groups.
+
+**API Endpoints:** `POST /ha_list_groups`, `POST /ha_create_group`
+
+#### ha_list_resources / ha_add_resource / ha_delete_resource 🆕
+Manage HA resources.
+
+**API Endpoints:** `POST /ha_list_resources`, `POST /ha_add_resource`, `POST /ha_delete_resource`
+
+### Replication
+
+#### replication_list_jobs / replication_create_job / replication_delete_job 🆕
+Replication job management.
+
+**API Endpoints:** `POST /replication_list_jobs`, `POST /replication_create_job`, `POST /replication_delete_job`
+
+### SDN
+
+#### sdn_list_zones / sdn_list_vnets 🆕
+SDN zones/vnets listing.
+
+**API Endpoints:** `POST /sdn_list_zones`, `POST /sdn_list_vnets`
+
+### Ceph
+
+#### ceph_status / ceph_df 🆕
+Ceph status and usage on a node.
+
+**API Endpoints:** `POST /ceph_status`, `POST /ceph_df`
+
+### VM Consoles & Disk Operations
+
+#### vm_vncproxy / vm_spiceproxy 🆕
+Create VNC/SPICE proxy for a VM.
+
+**API Endpoints:** `POST /vm_vncproxy`, `POST /vm_spiceproxy`
+
+#### vm_move_disk / vm_import_disk / vm_attach_disk / vm_detach_disk 🆕
+VM disk move/import/attach/detach operations.
+
+**API Endpoints:** `POST /vm_move_disk`, `POST /vm_import_disk`, `POST /vm_attach_disk`, `POST /vm_detach_disk`
+
+### Storage Content Operations
+
+#### delete_storage_content 🆕
+Delete a storage volume.
+
+**API Endpoint:** `POST /delete_storage_content`
+
+#### upload_storage_content 🆕
+Upload ISO/template/backup to storage.
+
+**API Endpoint:** `POST /upload_storage_content`
+
+### Generic Proxmox Proxy (Phase 2)
+
+#### proxmox_request 🆕
+Call any Proxmox API endpoint.
+
+Example payload:
+```json
+{
+  "method": "GET",
+  "path": "nodes/pve/qemu/100/status/current",
+  "params": {}
+}
+```
 
 **Requirements:**
 - VM must be running

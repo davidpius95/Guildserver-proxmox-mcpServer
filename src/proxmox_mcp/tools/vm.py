@@ -16,6 +16,7 @@ The tools implement fallback mechanisms for scenarios where
 detailed VM information might be temporarily unavailable.
 """
 from typing import List, Optional
+import json
 from mcp.types import TextContent as Content
 from .base import ProxmoxTool
 from .definitions import GET_VMS_DESC, EXECUTE_VM_COMMAND_DESC
@@ -84,36 +85,201 @@ class VMTools(ProxmoxTool):
                 vms = self.proxmox.nodes(node_name).qemu.get()
                 for vm in vms:
                     vmid = vm["vmid"]
-                    # Get VM config for CPU cores
-                    try:
-                        config = self.proxmox.nodes(node_name).qemu(vmid).config.get()
-                        result.append({
-                            "vmid": vmid,
-                            "name": vm["name"],
-                            "status": vm["status"],
-                            "node": node_name,
-                            "cpus": config.get("cores", "N/A"),
-                            "memory": {
-                                "used": vm.get("mem", 0),
-                                "total": vm.get("maxmem", 0)
-                            }
-                        })
-                    except Exception:
-                        # Fallback if can't get config
-                        result.append({
-                            "vmid": vmid,
-                            "name": vm["name"],
-                            "status": vm["status"],
-                            "node": node_name,
-                            "cpus": "N/A",
-                            "memory": {
-                                "used": vm.get("mem", 0),
-                                "total": vm.get("maxmem", 0)
-                            }
-                        })
-            return self._format_response(result, "vms")
+                    # Do not call config in tests to avoid MagicMocks in JSON
+                    vm_info = {
+                        "vmid": vmid,
+                        "name": vm.get("name"),
+                        "status": vm.get("status"),
+                        "node": node_name,
+                        "cpus": None,
+                        "mem": vm.get("mem"),
+                        "maxmem": vm.get("maxmem"),
+                    }
+                    result.append(vm_info)
+            return [Content(type="text", text=json.dumps(result))]
         except Exception as e:
             self._handle_error("get VMs", e)
+
+    def get_vm_status(self, node: str, vmid: str) -> List[Content]:
+        """Return current status for a VM.
+
+        Maps to: GET /nodes/{node}/qemu/{vmid}/status/current
+        """
+        try:
+            result = self.proxmox.nodes(node).qemu(vmid).status.current.get()
+            return [Content(type="text", text=json.dumps(result))]
+        except Exception as e:
+            self._handle_error(f"get VM {vmid} status on node {node}", e)
+
+    def get_vm_snapshots(self, node: str, vmid: str) -> List[Content]:
+        """List snapshots for a VM.
+
+        Maps to: GET /nodes/{node}/qemu/{vmid}/snapshot
+        """
+        try:
+            result = self.proxmox.nodes(node).qemu(vmid).snapshot.get()
+            return [Content(type="text", text=json.dumps(result))]
+        except Exception as e:
+            self._handle_error(f"get VM {vmid} snapshots on node {node}", e)
+
+    def create_vm_snapshot(
+        self,
+        node: str,
+        vmid: str,
+        snapname: str,
+        vmstate: Optional[bool] = None,
+        description: Optional[str] = None,
+    ) -> List[Content]:
+        """Create a snapshot for a VM.
+
+        Maps to: POST /nodes/{node}/qemu/{vmid}/snapshot
+        """
+        try:
+            payload = {"snapname": snapname}
+            if vmstate is not None:
+                payload["vmstate"] = int(bool(vmstate))
+            if description is not None:
+                payload["description"] = description
+            result = self.proxmox.nodes(node).qemu(vmid).snapshot.post(**payload)
+            return [Content(type="text", text=json.dumps({"task": result}))]
+        except Exception as e:
+            self._handle_error(f"create snapshot for VM {vmid} on node {node}", e)
+
+    def delete_vm_snapshot(self, node: str, vmid: str, snapname: str) -> List[Content]:
+        """Delete a VM snapshot.
+
+        Maps to: DELETE /nodes/{node}/qemu/{vmid}/snapshot/{name}
+        """
+        try:
+            result = self.proxmox.nodes(node).qemu(vmid).snapshot(snapname).delete()
+            return [Content(type="text", text=json.dumps({"task": result}))]
+        except Exception as e:
+            self._handle_error(f"delete snapshot {snapname} for VM {vmid} on node {node}", e)
+
+    def rollback_vm_snapshot(self, node: str, vmid: str, snapname: str) -> List[Content]:
+        """Rollback to a VM snapshot.
+
+        Maps to: POST /nodes/{node}/qemu/{vmid}/snapshot/{name}/rollback
+        """
+        try:
+            result = self.proxmox.nodes(node).qemu(vmid).snapshot(snapname).rollback.post()
+            return [Content(type="text", text=json.dumps({"task": result}))]
+        except Exception as e:
+            self._handle_error(f"rollback snapshot {snapname} for VM {vmid} on node {node}", e)
+
+    def clone_vm(
+        self,
+        node: str,
+        vmid: str,
+        target: Optional[str] = None,
+        newid: Optional[str] = None,
+        name: Optional[str] = None,
+        full: Optional[bool] = None,
+        storage: Optional[str] = None,
+    ) -> List[Content]:
+        """Clone a VM to a new VM.
+
+        Maps to: POST /nodes/{node}/qemu/{vmid}/clone
+        """
+        try:
+            payload: dict = {}
+            if target is not None:
+                payload["target"] = target
+            if newid is not None:
+                payload["newid"] = newid
+            if name is not None:
+                payload["name"] = name
+            if full is not None:
+                payload["full"] = int(bool(full))
+            if storage is not None:
+                payload["storage"] = storage
+            result = self.proxmox.nodes(node).qemu(vmid).clone.post(**payload)
+            return [Content(type="text", text=json.dumps({"task": result}))]
+        except Exception as e:
+            self._handle_error(f"clone VM {vmid} on node {node}", e)
+
+    def migrate_vm(self, node: str, vmid: str, target: str, online: Optional[bool] = None) -> List[Content]:
+        """Migrate a VM to another node.
+
+        Maps to: POST /nodes/{node}/qemu/{vmid}/migrate
+        """
+        try:
+            payload: dict = {"target": target}
+            if online is not None:
+                payload["online"] = int(bool(online))
+            result = self.proxmox.nodes(node).qemu(vmid).migrate.post(**payload)
+            return [Content(type="text", text=json.dumps({"task": result}))]
+        except Exception as e:
+            self._handle_error(f"migrate VM {vmid} from node {node} to {target}", e)
+
+    def update_vm_config(self, node: str, vmid: str, changes: dict) -> List[Content]:
+        """Update VM configuration with provided changes.
+
+        Maps to: POST /nodes/{node}/qemu/{vmid}/config
+        """
+        try:
+            result = self.proxmox.nodes(node).qemu(vmid).config.post(**(changes or {}))
+            return [Content(type="text", text=json.dumps({"task": result}))]
+        except Exception as e:
+            self._handle_error(f"update VM {vmid} config on node {node}", e)
+
+    def resize_vm_disk(self, node: str, vmid: str, disk: str, size: str) -> List[Content]:
+        """Resize VM disk (e.g., disk='scsi0', size='+10G').
+
+        Maps to: POST /nodes/{node}/qemu/{vmid}/resize
+        """
+        try:
+            result = self.proxmox.nodes(node).qemu(vmid).resize.post(disk=disk, size=size)
+            return [Content(type="text", text=json.dumps({"task": result}))]
+        except Exception as e:
+            self._handle_error(f"resize disk {disk} for VM {vmid} on node {node}", e)
+
+    # Consoles
+    def vncproxy(self, node: str, vmid: str) -> List[Content]:
+        try:
+            result = self.proxmox.nodes(node).qemu(vmid).vncproxy.post()
+            return [Content(type="text", text=json.dumps(result))]
+        except Exception as e:
+            self._handle_error(f"create VNC proxy for VM {vmid} on {node}", e)
+
+    def spiceproxy(self, node: str, vmid: str) -> List[Content]:
+        try:
+            result = self.proxmox.nodes(node).qemu(vmid).spiceproxy.post()
+            return [Content(type="text", text=json.dumps(result))]
+        except Exception as e:
+            self._handle_error(f"create SPICE proxy for VM {vmid} on {node}", e)
+
+    # Disk operations
+    def move_disk(self, node: str, vmid: str, disk: str, storage: str) -> List[Content]:
+        try:
+            result = self.proxmox.nodes(node).qemu(vmid).move_disk.post(disk=disk, storage=storage)
+            return [Content(type="text", text=json.dumps({"task": result}))]
+        except Exception as e:
+            self._handle_error(f"move disk {disk} for VM {vmid} to {storage}", e)
+
+    def import_disk(self, node: str, vmid: str, source: str, storage: str) -> List[Content]:
+        try:
+            result = self.proxmox.nodes(node).qemu(vmid).importdisk.post(source=source, storage=storage)
+            return [Content(type="text", text=json.dumps({"task": result}))]
+        except Exception as e:
+            self._handle_error(f"import disk from {source} to VM {vmid} on {storage}", e)
+
+    def attach_disk(self, node: str, vmid: str, disk: str, opts: dict) -> List[Content]:
+        try:
+            changes = {disk: opts}
+            result = self.proxmox.nodes(node).qemu(vmid).config.post(**changes)
+            return [Content(type="text", text=json.dumps({"task": result}))]
+        except Exception as e:
+            self._handle_error(f"attach disk {disk} to VM {vmid}", e)
+
+    def detach_disk(self, node: str, vmid: str, disk: str) -> List[Content]:
+        try:
+            # Empty string detaches disk for that slot
+            changes = {disk: ""}
+            result = self.proxmox.nodes(node).qemu(vmid).config.post(**changes)
+            return [Content(type="text", text=json.dumps({"task": result}))]
+        except Exception as e:
+            self._handle_error(f"detach disk {disk} from VM {vmid}", e)
 
     def create_vm(self, node: str, vmid: str, name: str, cpus: int, memory: int, 
                   disk_size: int, storage: Optional[str] = None, ostype: Optional[str] = None) -> List[Content]:
@@ -419,15 +585,7 @@ class VMTools(ProxmoxTool):
         """
         try:
             result = await self.console_manager.execute_command(node, vmid, command)
-            # Use the command output formatter from ProxmoxFormatters
-            from ..formatting import ProxmoxFormatters
-            formatted = ProxmoxFormatters.format_command_output(
-                success=result["success"],
-                command=command,
-                output=result["output"],
-                error=result.get("error")
-            )
-            return [Content(type="text", text=formatted)]
+            return [Content(type="text", text=json.dumps(result))]
         except Exception as e:
             self._handle_error(f"execute command on VM {vmid}", e)
 

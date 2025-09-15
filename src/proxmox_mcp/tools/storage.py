@@ -13,6 +13,7 @@ The tools implement fallback mechanisms for scenarios where
 detailed storage information might be temporarily unavailable.
 """
 from typing import List
+import json
 from mcp.types import TextContent as Content
 from .base import ProxmoxTool
 from .definitions import GET_STORAGE_DESC
@@ -62,33 +63,44 @@ class StorageTools(ProxmoxTool):
         """
         try:
             result = self.proxmox.storage.get()
-            storage = []
-            
-            for store in result:
-                # Get detailed storage info including usage
-                try:
-                    status = self.proxmox.nodes(store.get("node", "localhost")).storage(store["storage"]).status.get()
-                    storage.append({
-                        "storage": store["storage"],
-                        "type": store["type"],
-                        "content": store.get("content", []),
-                        "status": "online" if store.get("enabled", True) else "offline",
-                        "used": status.get("used", 0),
-                        "total": status.get("total", 0),
-                        "available": status.get("avail", 0)
-                    })
-                except Exception:
-                    # If detailed status fails, add basic info
-                    storage.append({
-                        "storage": store["storage"],
-                        "type": store["type"],
-                        "content": store.get("content", []),
-                        "status": "online" if store.get("enabled", True) else "offline",
-                        "used": 0,
-                        "total": 0,
-                        "available": 0
-                    })
-                    
-            return self._format_response(storage, "storage")
+            return [Content(type="text", text=json.dumps(result))]
         except Exception as e:
             self._handle_error("get storage", e)
+
+    def get_storage_content(self, node: str, storage: str) -> List[Content]:
+        """List storage content (images, iso, backups).
+
+        Maps to: GET /nodes/{node}/storage/{storage}/content
+        """
+        try:
+            result = self.proxmox.nodes(node).storage(storage).content.get()
+            return [Content(type="text", text=json.dumps(result))]
+        except Exception as e:
+            self._handle_error(f"get storage content for {storage} on node {node}", e)
+
+    def delete_storage_content(self, node: str, storage: str, volume: str) -> List[Content]:
+        """Delete content from storage.
+
+        Maps to: DELETE /nodes/{node}/storage/{storage}/content/{volume}
+        """
+        try:
+            result = self.proxmox.nodes(node).storage(storage).content(volume).delete()
+            return [Content(type="text", text=json.dumps(result))]
+        except Exception as e:
+            self._handle_error(f"delete storage content {volume} on {storage}@{node}", e)
+
+    def upload_storage_content(self, node: str, storage: str, content: str, file_path: str, filename: str) -> List[Content]:
+        """Upload a file to storage (iso, vztmpl, backup).
+
+        Maps to: POST /nodes/{node}/storage/{storage}/upload
+        """
+        try:
+            with open(file_path, "rb") as fh:
+                # proxmoxer supports passing file handle as 'filename'
+                result = self.proxmox.nodes(node).storage(storage).upload.post(
+                    content=content,
+                    filename=(filename, fh),
+                )
+            return [Content(type="text", text=json.dumps(result))]
+        except Exception as e:
+            self._handle_error(f"upload storage content to {storage}@{node}", e)

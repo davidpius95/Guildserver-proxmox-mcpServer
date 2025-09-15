@@ -298,6 +298,68 @@ class ContainerTools(ProxmoxTool):
         except Exception as e:
             return self._err("Failed to list containers", e)
 
+    def get_container_status(self, node: str, vmid: str) -> List[Content]:
+        """Return LXC status/current for a container.
+
+        Maps to: GET /nodes/{node}/lxc/{vmid}/status/current
+        """
+        try:
+            raw = self.proxmox.nodes(node).lxc(int(vmid)).status.current.get()
+            return self._json_fmt(raw)
+        except Exception as e:
+            return self._err(f"Failed to get container status {node}:{vmid}", e)
+
+    # ---- Phase 2: create/config/snapshot wrappers ----
+    def create_container(self, node: str, config: Dict[str, Any]) -> List[Content]:
+        """Create an LXC container.
+
+        Maps to: POST /nodes/{node}/lxc
+        """
+        try:
+            result = self.proxmox.nodes(node).lxc.post(**(config or {}))
+            return self._json_fmt({"task": result})
+        except Exception as e:
+            return self._err(f"Failed to create container on {node}", e)
+
+    def update_container_config(self, node: str, vmid: int, changes: Dict[str, Any]) -> List[Content]:
+        """Update LXC container config.
+
+        Maps to: POST /nodes/{node}/lxc/{vmid}/config
+        """
+        try:
+            result = self.proxmox.nodes(node).lxc(int(vmid)).config.post(**(changes or {}))
+            return self._json_fmt({"task": result})
+        except Exception as e:
+            return self._err(f"Failed to update container {node}:{vmid} config", e)
+
+    def list_container_snapshots(self, node: str, vmid: int) -> List[Content]:
+        try:
+            result = self.proxmox.nodes(node).lxc(int(vmid)).snapshot.get()
+            return self._json_fmt(result)
+        except Exception as e:
+            return self._err(f"Failed to list container snapshots {node}:{vmid}", e)
+
+    def create_container_snapshot(self, node: str, vmid: int, snapname: str) -> List[Content]:
+        try:
+            result = self.proxmox.nodes(node).lxc(int(vmid)).snapshot.post(snapname=snapname)
+            return self._json_fmt({"task": result})
+        except Exception as e:
+            return self._err(f"Failed to create container snapshot {node}:{vmid}:{snapname}", e)
+
+    def delete_container_snapshot(self, node: str, vmid: int, snapname: str) -> List[Content]:
+        try:
+            result = self.proxmox.nodes(node).lxc(int(vmid)).snapshot(snapname).delete()
+            return self._json_fmt({"task": result})
+        except Exception as e:
+            return self._err(f"Failed to delete container snapshot {node}:{vmid}:{snapname}", e)
+
+    def rollback_container_snapshot(self, node: str, vmid: int, snapname: str) -> List[Content]:
+        try:
+            result = self.proxmox.nodes(node).lxc(int(vmid)).snapshot(snapname).rollback.post()
+            return self._json_fmt({"task": result})
+        except Exception as e:
+            return self._err(f"Failed to rollback container snapshot {node}:{vmid}:{snapname}", e)
+
     # ---------- target resolution for control ops ----------
     def _resolve_targets(self, selector: str) -> List[Tuple[str, int, str]]:
         """
