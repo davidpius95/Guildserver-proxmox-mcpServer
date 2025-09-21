@@ -1,3 +1,4 @@
+
 mcp_server:
   mode: openapi            # 'openapi' (HTTP proxy via mcpo) or 'stdio' (direct MCP)
   base_url: "http://localhost:8811"  # Change to your public URL or tunnel host when remote

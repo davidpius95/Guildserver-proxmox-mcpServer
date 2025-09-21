@@ -10,11 +10,7 @@ def main() -> None:
     args = parser.parse_args()
 
     cfg = load_template_config(args.config)
-
     params = {}
-    for kv in args.__dict__["--set"] if "--set" in args.__dict__ else args.__dict__["_get_kwargs"]:
-        pass  # placeholder to satisfy linter; we parse below
-
     # Parse key=value pairs
     for item in args.set:
         if "=" in item:
