@@ -23,7 +23,11 @@ class AdminTools(ProxmoxTool):
         return [Content(type="text", text=json.dumps(result))]
 
     def network_apply(self, node: str) -> List[Content]:
-        result = self.proxmox.nodes(node).network.apply.post()
+        """Apply pending network changes.
+
+        Maps to: PUT /nodes/{node}/network -- there is no 'network/apply' endpoint.
+        """
+        result = self.proxmox.nodes(node).network.put()
         return [Content(type="text", text=json.dumps(result))]
 
     # APT

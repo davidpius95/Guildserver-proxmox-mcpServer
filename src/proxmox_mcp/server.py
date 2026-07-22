@@ -34,6 +34,7 @@ from .tools.storage import StorageTools
 from .tools.cluster import ClusterTools
 from .tools.containers import ContainerTools
 from .tools.generic import GenericTools
+from .tools.apischema import ApiSchemaTools
 from .tools.access import AccessTools
 from .tools.firewall import FirewallTools
 from .tools.pools import PoolTools
@@ -154,6 +155,7 @@ class ProxmoxMCPServer:
         self.cluster_tools = ClusterTools(self.proxmox)
         self.container_tools = ContainerTools(self.proxmox)
         self.generic_tools = GenericTools(self.proxmox)
+        self.apischema_tools = ApiSchemaTools(self.proxmox)
         self.access_tools = AccessTools(self.proxmox)
         self.firewall_tools = FirewallTools(self.proxmox)
         self.pool_tools = PoolTools(self.proxmox)
@@ -380,10 +382,11 @@ class ProxmoxMCPServer:
         def vm_import_disk(
             node: Annotated[str, Field(description="Node")],
             vmid: Annotated[str, Field(description="VM ID")],
-            source: Annotated[str, Field(description="Source path")],
-            storage: Annotated[str, Field(description="Target storage")]
+            source: Annotated[str, Field(description="Source image path or volume ID to import from")],
+            storage: Annotated[str, Field(description="Target storage (e.g. 'local-lvm')")],
+            disk: Annotated[str, Field(description="Slot to attach as, e.g. 'scsi1' or 'virtio0'")] = "scsi1",
         ):
-            return self.vm_tools.import_disk(node, vmid, source, storage)
+            return self.vm_tools.import_disk(node, vmid, source, storage, disk)
 
         @self.mcp.tool(description=VM_ATTACH_DISK_DESC)
         def vm_attach_disk(
@@ -732,6 +735,52 @@ class ProxmoxMCPServer:
                 path=payload.path,
                 params=payload.params,
                 data=payload.data,
+            )
+
+        # Schema-driven access to the full API (all 675 endpoint+method pairs).
+        # Three tools instead of 600: search, describe, then call with validation.
+        @self.mcp.tool(description=(
+            "Search the complete Proxmox VE API (all 675 endpoints) by keyword. "
+            "Use this to find the endpoint for anything without a dedicated tool -- "
+            "Ceph, SDN, notifications, ACME, device mapping, backup schedules, API tokens. "
+            "Returns method + path pairs; feed one to pve_describe_endpoint for its parameters. "
+            "Example: query='ceph osd' or query='firewall alias'."
+        ))
+        def pve_find_endpoint(
+            query: Annotated[str, Field(description="Space-separated keywords; all must match (e.g. 'sdn zone')")],
+            method: Annotated[Optional[Literal["GET","POST","PUT","DELETE"]], Field(description="Restrict to one HTTP method")] = None,
+            limit: Annotated[int, Field(description="Max results", ge=1, le=100)] = 25,
+        ):
+            return self.apischema_tools.find_endpoint(query=query, method=method, limit=limit)
+
+        @self.mcp.tool(description=(
+            "Show the full signature of a Proxmox API endpoint: every parameter with its type, "
+            "whether it is required, allowed values, and the permissions it needs. "
+            "Accepts a templated path ('nodes/{node}/ceph/osd') or a concrete one ('nodes/pve/ceph/osd'). "
+            "Call this before pve_call when you are unsure of the parameters."
+        ))
+        def pve_describe_endpoint(
+            path: Annotated[str, Field(description="API path, with or without leading slash")],
+            method: Annotated[Optional[Literal["GET","POST","PUT","DELETE"]], Field(description="Narrow to one method if the path offers several")] = None,
+        ):
+            return self.apischema_tools.describe_endpoint(path=path, method=method)
+
+        @self.mcp.tool(description=(
+            "Call ANY Proxmox VE API endpoint, validated against the official schema first. "
+            "This is the general-purpose tool: it reaches all 675 endpoints, including everything "
+            "without a dedicated wrapper. Unknown paths, wrong HTTP methods, missing required "
+            "parameters and unknown parameters are caught locally with a clear message. "
+            "Note every node reports its own name as 'pve', so paths look like 'nodes/pve/...'. "
+            "Example: method='GET', path='nodes/pve/ceph/status'."
+        ))
+        def pve_call(
+            method: Annotated[Literal["GET","POST","PUT","DELETE"], Field(description="HTTP method")],
+            path: Annotated[str, Field(description="Concrete API path, e.g. 'nodes/pve/qemu/100/status/current'")],
+            params: Annotated[Optional[dict], Field(description="Query or body parameters as a dict")] = None,
+            skip_validation: Annotated[bool, Field(description="Bypass schema checks (for endpoints newer than the bundled schema)")] = False,
+        ):
+            return self.apischema_tools.call(
+                method=method, path=path, params=params, skip_validation=skip_validation
             )
 
 

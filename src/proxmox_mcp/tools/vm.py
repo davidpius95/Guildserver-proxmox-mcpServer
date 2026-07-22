@@ -226,10 +226,10 @@ class VMTools(ProxmoxTool):
     def resize_vm_disk(self, node: str, vmid: str, disk: str, size: str) -> List[Content]:
         """Resize VM disk (e.g., disk='scsi0', size='+10G').
 
-        Maps to: POST /nodes/{node}/qemu/{vmid}/resize
+        Maps to: PUT /nodes/{node}/qemu/{vmid}/resize (the API offers PUT only).
         """
         try:
-            result = self.proxmox.nodes(node).qemu(vmid).resize.post(disk=disk, size=size)
+            result = self.proxmox.nodes(node).qemu(vmid).resize.put(disk=disk, size=size)
             return [Content(type="text", text=json.dumps({"task": result}))]
         except Exception as e:
             self._handle_error(f"resize disk {disk} for VM {vmid} on node {node}", e)
@@ -257,9 +257,26 @@ class VMTools(ProxmoxTool):
         except Exception as e:
             self._handle_error(f"move disk {disk} for VM {vmid} to {storage}", e)
 
-    def import_disk(self, node: str, vmid: str, source: str, storage: str) -> List[Content]:
+    def import_disk(
+        self, node: str, vmid: str, source: str, storage: str, disk: str = "scsi1"
+    ) -> List[Content]:
+        """Import a disk image into a VM.
+
+        There is no 'importdisk' API endpoint -- `qm importdisk` is CLI-only. The
+        supported API equivalent is to set a disk slot with `import-from`, which
+        makes Proxmox copy the image into the target storage:
+
+            POST /nodes/{node}/qemu/{vmid}/config
+                 scsi1=local-lvm:0,import-from=/path/to/image.qcow2
+
+        Args:
+            source: path or volume ID of the image to import
+            storage: storage to import into (e.g. 'local-lvm')
+            disk: slot to attach as (e.g. 'scsi1', 'virtio0')
+        """
         try:
-            result = self.proxmox.nodes(node).qemu(vmid).importdisk.post(source=source, storage=storage)
+            spec = f"{storage}:0,import-from={source}"
+            result = self.proxmox.nodes(node).qemu(vmid).config.post(**{disk: spec})
             return [Content(type="text", text=json.dumps({"task": result}))]
         except Exception as e:
             self._handle_error(f"import disk from {source} to VM {vmid} on {storage}", e)

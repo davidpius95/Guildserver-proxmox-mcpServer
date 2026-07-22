@@ -27,7 +27,7 @@ authors = [
 ]
 requires-python = ">=3.9"
 dependencies = [
-    "mcp @ git+https://github.com/modelcontextprotocol/python-sdk.git",
+    "mcp>=1.14.0,<1.15.0",
     "proxmoxer>=2.0.1",
     "requests>=2.31.0",
     "pydantic>=2.0.0",
@@ -37,6 +37,10 @@ dependencies = [
 [tool.setuptools.packages.find]
 where = ["src"]
 include = ["proxmox_mcp*"]
+
+[tool.setuptools.package-data]
+# Bundled PVE API schema backing pve_find_endpoint / pve_describe_endpoint / pve_call
+"proxmox_mcp.data" = ["*.json"]
 
 [project.optional-dependencies]
 dev = [

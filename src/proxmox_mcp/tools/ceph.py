@@ -10,7 +10,12 @@ class CephTools(ProxmoxTool):
         return [Content(type="text", text=json.dumps(result))]
 
     def df(self, node: str) -> List[Content]:
-        result = self.proxmox.nodes(node).ceph.df.get()
+        """Per-pool Ceph usage.
+
+        Maps to: GET /nodes/{node}/ceph/pool -- the API has no 'ceph/df' endpoint,
+        and this is where the usage figures `ceph df` prints actually come from.
+        """
+        result = self.proxmox.nodes(node).ceph.pool.get()
         return [Content(type="text", text=json.dumps(result))]
 
 

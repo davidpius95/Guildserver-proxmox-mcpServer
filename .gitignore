@@ -78,3 +78,6 @@ yarn.lock
 config/config.json
 proxmox-config/config.json
 **/config.json
+proxmox-config/config.*.json
+!proxmox-config/config.example.json
+proxmox-config/nodes.json

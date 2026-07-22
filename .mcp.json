@@ -1,0 +1,59 @@
+{
+  "mcpServers": {
+    "proxmox-nodeA": {
+      "command": "docker",
+      "args": [
+        "exec",
+        "-i",
+        "proxmox-mcp-nodeA",
+        "/bin/bash",
+        "-c",
+        "cd /app && source .venv/bin/activate && python -m proxmox_mcp.server"
+      ]
+    },
+    "proxmox-nodeB": {
+      "command": "docker",
+      "args": [
+        "exec",
+        "-i",
+        "proxmox-mcp-nodeB",
+        "/bin/bash",
+        "-c",
+        "cd /app && source .venv/bin/activate && python -m proxmox_mcp.server"
+      ]
+    },
+    "proxmox-nodeC": {
+      "command": "docker",
+      "args": [
+        "exec",
+        "-i",
+        "proxmox-mcp-nodeC",
+        "/bin/bash",
+        "-c",
+        "cd /app && source .venv/bin/activate && python -m proxmox_mcp.server"
+      ]
+    },
+    "proxmox-nodeD": {
+      "command": "docker",
+      "args": [
+        "exec",
+        "-i",
+        "proxmox-mcp-nodeD",
+        "/bin/bash",
+        "-c",
+        "cd /app && source .venv/bin/activate && python -m proxmox_mcp.server"
+      ]
+    },
+    "proxmox-nodeE": {
+      "command": "docker",
+      "args": [
+        "exec",
+        "-i",
+        "proxmox-mcp-nodeE",
+        "/bin/bash",
+        "-c",
+        "cd /app && source .venv/bin/activate && python -m proxmox_mcp.server"
+      ]
+    }
+  }
+}
