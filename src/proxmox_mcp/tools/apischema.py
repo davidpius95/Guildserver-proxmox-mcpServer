@@ -185,7 +185,18 @@ class ApiSchemaTools(ProxmoxTool):
                     f"{want} {spec['path']} is missing required parameter(s): {', '.join(sorted(missing))}. "
                     "Run pve_describe_endpoint for the full signature."
                 )
-            unknown = [n for n in params if n not in declared]
+            # Proxmox declares repeatable parameters as 'net[n]', 'scsi[n]', 'ide[n]'
+            # and so on; the caller sends the concrete 'net0' / 'scsi1'.
+            indexed = [k[:-3] for k in declared if k.endswith("[n]")]
+            def _known(name: str) -> bool:
+                if name in declared:
+                    return True
+                return any(
+                    name.startswith(prefix) and name[len(prefix):].isdigit()
+                    for prefix in indexed
+                )
+
+            unknown = [n for n in params if not _known(n)]
             if unknown:
                 raise ValueError(
                     f"{want} {spec['path']} does not accept: {', '.join(sorted(unknown))}. "

@@ -12,82 +12,14 @@ x-node-common: &node-common
     - proxmox-network
 
 services:
-  nodeA:
+  guild-a:
     <<: *node-common
-    container_name: proxmox-mcp-nodeA
-    # 192.168.8.112 -> http://localhost:8811
+    container_name: proxmox-mcp-guild-a
+    # 192.168.8.125 -> http://localhost:8811
     ports:
       - "8811:8811"
     environment:
-      - PROXMOX_MCP_CONFIG=/app/proxmox-config/config.nodeA.json
-      - API_HOST=0.0.0.0
-      - API_PORT=8811
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8811/openapi.json"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 20s
-
-  nodeB:
-    <<: *node-common
-    container_name: proxmox-mcp-nodeB
-    # 192.168.8.155 -> http://localhost:8812
-    ports:
-      - "8812:8811"
-    environment:
-      - PROXMOX_MCP_CONFIG=/app/proxmox-config/config.nodeB.json
-      - API_HOST=0.0.0.0
-      - API_PORT=8811
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8811/openapi.json"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 20s
-
-  nodeC:
-    <<: *node-common
-    container_name: proxmox-mcp-nodeC
-    # 192.168.8.156 -> http://localhost:8813
-    ports:
-      - "8813:8811"
-    environment:
-      - PROXMOX_MCP_CONFIG=/app/proxmox-config/config.nodeC.json
-      - API_HOST=0.0.0.0
-      - API_PORT=8811
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8811/openapi.json"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 20s
-
-  nodeD:
-    <<: *node-common
-    container_name: proxmox-mcp-nodeD
-    # 192.168.8.195 -> http://localhost:8814
-    ports:
-      - "8814:8811"
-    environment:
-      - PROXMOX_MCP_CONFIG=/app/proxmox-config/config.nodeD.json
-      - API_HOST=0.0.0.0
-      - API_PORT=8811
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8811/openapi.json"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 20s
-
-  nodeE:
-    <<: *node-common
-    container_name: proxmox-mcp-nodeE
-    # 192.168.8.125 -> http://localhost:8815
-    ports:
-      - "8815:8811"
-    environment:
-      - PROXMOX_MCP_CONFIG=/app/proxmox-config/config.nodeE.json
+      - PROXMOX_MCP_CONFIG=/app/proxmox-config/config.guild-a.json
       - API_HOST=0.0.0.0
       - API_PORT=8811
     healthcheck:
