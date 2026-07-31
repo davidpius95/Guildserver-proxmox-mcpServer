@@ -11,7 +11,7 @@ RUN apt-get update && apt-get install -y \
     && rm -rf /var/lib/apt/lists/*
 
 # Install Python dependencies
-RUN pip install mcpo uv
+RUN pip install "mcp<2" mcpo uv
 
 # Copy project files
 COPY . .

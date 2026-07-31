@@ -1,0 +1,85 @@
+#!/usr/bin/env bash
+# Manage *.guildserver.io subdomains from your Mac.
+#
+#   ./ingress/route add jellyfin 192.168.8.244:8096
+#   ./ingress/route rm  jellyfin
+#   ./ingress/route ls
+#
+# Does BOTH sides:
+#   1. Caddy route inside the ingress LXC (always).
+#   2. Cloudflare DNS record for the subdomain (only if an API token is
+#      configured — see scripts/cf-sync.sh). With the wildcard bootstrapped this
+#      is belt-and-braces, so it is a warning, not an error, when unavailable.
+#
+# Finds whichever node currently hosts the ingress container (it lives on shared
+# storage and can migrate), then runs the route scripts inside it. The Caddy
+# admin API stays bound to 127.0.0.1 in the container — it is never exposed.
+#
+# Env overrides:
+#   CTID     (default: 910)
+#   NODES    (default: "nodeA nodeB nodeC nodeD nodeE")  ssh aliases to search
+#   NO_CF=1  skip the Cloudflare step entirely
+set -euo pipefail
+
+CTID="${CTID:-910}"
+NODES="${NODES:-nodeA nodeB nodeC nodeD nodeE}"
+here="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+CF_SYNC="${here}/scripts/cf-sync.sh"
+
+usage() {
+  cat >&2 <<'EOF'
+usage:
+  route add <subdomain> <backend-host:port>
+  route rm  <subdomain>
+  route ls
+EOF
+  exit 2
+}
+
+# Locate the node hosting the container. Ask the first reachable node for the
+# cluster-wide answer; fall back to probing each node directly.
+find_node() {
+  local n owner
+  for n in $NODES; do
+    owner="$(ssh -o ConnectTimeout=5 -o BatchMode=yes "$n" \
+      "pvesh get /cluster/resources --type vm --output-format json 2>/dev/null \
+       | tr ',' '\n' | grep -B5 '\"vmid\":${CTID}\$' | grep -o '\"node\":\"[^\"]*\"' \
+       | head -1 | cut -d'\"' -f4" 2>/dev/null || true)"
+    [ -n "$owner" ] && { echo "$owner"; return 0; }
+  done
+  for n in $NODES; do
+    if ssh -o ConnectTimeout=5 -o BatchMode=yes "$n" "pct status ${CTID}" >/dev/null 2>&1; then
+      echo "$n"; return 0
+    fi
+  done
+  echo "ERROR: could not find CT ${CTID} on any of: ${NODES}" >&2
+  return 1
+}
+
+[ $# -ge 1 ] || usage
+cmd="$1"; shift
+
+node="$(find_node)"
+
+case "$cmd" in
+  add)
+    [ $# -eq 2 ] || usage
+    ssh -o BatchMode=yes "$node" "pct exec ${CTID} -- /usr/local/bin/add-route $(printf '%q %q' "$1" "$2")"
+    if [ "${NO_CF:-0}" != 1 ] && [ -x "$CF_SYNC" ]; then
+      "$CF_SYNC" add "$1" || echo "  (cloudflare step skipped — wildcard should still cover it)" >&2
+    fi
+    ;;
+  rm|remove)
+    [ $# -eq 1 ] || usage
+    ssh -o BatchMode=yes "$node" "pct exec ${CTID} -- /usr/local/bin/remove-route $(printf '%q' "$1")"
+    if [ "${NO_CF:-0}" != 1 ] && [ -x "$CF_SYNC" ]; then
+      "$CF_SYNC" rm "$1" || true
+    fi
+    ;;
+  ls|list)
+    ssh -o BatchMode=yes "$node" "pct exec ${CTID} -- /usr/local/bin/list-routes"
+    ;;
+  *)
+    usage
+    ;;
+esac

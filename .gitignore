@@ -74,10 +74,22 @@ yarn.lock
 .env.test.local
 .env.production.local
 
-# Local configuration
+# Local configuration (contains live Proxmox API tokens)
 config/config.json
 proxmox-config/config.json
 **/config.json
 proxmox-config/config.*.json
 !proxmox-config/config.example.json
 proxmox-config/nodes.json
+
+# Local MCP client registrations (machine-specific paths/hosts)
+.mcp.json
+.mcp.*.json
+
+# Local coding-agent tool state (not project source)
+.claude/
+.agents/
+.codex/
+
+# macOS
+.DS_Store

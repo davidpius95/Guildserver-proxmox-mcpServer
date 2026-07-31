@@ -1,0 +1,14 @@
+services:
+  netbootxyz:
+    image: ghcr.io/netbootxyz/netbootxyz:latest
+    container_name: netbootxyz
+    environment:
+      TFTPD_OPTS: --tftp-single-port
+    volumes:
+      - ./config:/config
+      - ./assets:/assets
+    ports:
+      - "3000:3000/tcp"
+      - "69:69/udp"
+      - "8080:80/tcp"
+    restart: unless-stopped

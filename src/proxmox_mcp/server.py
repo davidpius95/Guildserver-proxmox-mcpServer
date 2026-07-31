@@ -14,7 +14,6 @@ The server exposes a set of tools for managing Proxmox resources including:
 - Storage management
 - Cluster status monitoring
 """
-import logging
 import os
 import sys
 import signal
@@ -147,6 +146,17 @@ class ProxmoxMCPServer:
         # Initialize core components
         self.proxmox_manager = ProxmoxManager(self.config.proxmox, self.config.auth)
         self.proxmox = self.proxmox_manager.get_api()
+        self.default_cluster = self.config.default_cluster or (
+            self.config.clusters[0].name if self.config.clusters else "default"
+        )
+        self.cluster_managers = {}
+        self.cluster_apis = {}
+        for cluster in self.config.clusters:
+            manager = ProxmoxManager(cluster.proxmox, cluster.auth)
+            self.cluster_managers[cluster.name] = manager
+            self.cluster_apis[cluster.name] = manager.get_api()
+        if not self.cluster_apis:
+            self.cluster_apis[self.default_cluster] = self.proxmox
         
         # Initialize tools
         self.node_tools = NodeTools(self.proxmox)
@@ -156,6 +166,9 @@ class ProxmoxMCPServer:
         self.container_tools = ContainerTools(self.proxmox)
         self.generic_tools = GenericTools(self.proxmox)
         self.apischema_tools = ApiSchemaTools(self.proxmox)
+        self.apischema_tools_by_cluster = {
+            name: ApiSchemaTools(api) for name, api in self.cluster_apis.items()
+        }
         self.access_tools = AccessTools(self.proxmox)
         self.firewall_tools = FirewallTools(self.proxmox)
         self.pool_tools = PoolTools(self.proxmox)
@@ -170,6 +183,14 @@ class ProxmoxMCPServer:
         # Initialize MCP server
         self.mcp = FastMCP("ProxmoxMCP")
         self._setup_tools()
+
+    def _cluster_schema_tools(self, cluster: Optional[str]) -> ApiSchemaTools:
+        name = cluster or self.default_cluster
+        try:
+            return self.apischema_tools_by_cluster[name]
+        except KeyError:
+            available = ", ".join(sorted(self.apischema_tools_by_cluster))
+            raise ValueError(f"Unknown cluster '{name}'. Available clusters: {available}")
 
     def _setup_tools(self) -> None:
         """Register MCP tools with the server.
@@ -766,20 +787,32 @@ class ProxmoxMCPServer:
             return self.apischema_tools.describe_endpoint(path=path, method=method)
 
         @self.mcp.tool(description=(
+            "List the Proxmox clusters configured inside this one MCP server. "
+            "Use the returned cluster name as the 'cluster' argument to pve_call."
+        ))
+        def pve_list_clusters():
+            rows = []
+            for name in sorted(self.cluster_apis):
+                marker = " (default)" if name == self.default_cluster else ""
+                rows.append(f"{name}{marker}")
+            return [Content(type="text", text="\n".join(rows))]
+
+        @self.mcp.tool(description=(
             "Call ANY Proxmox VE API endpoint, validated against the official schema first. "
             "This is the general-purpose tool: it reaches all 675 endpoints, including everything "
             "without a dedicated wrapper. Unknown paths, wrong HTTP methods, missing required "
             "parameters and unknown parameters are caught locally with a clear message. "
-            "Note every node reports its own name as 'pve', so paths look like 'nodes/pve/...'. "
-            "Example: method='GET', path='nodes/pve/ceph/status'."
+            "For multi-cluster configs, pass cluster='guild-b' to target a non-default cluster. "
+            "Example: method='GET', path='cluster/status', cluster='guild-a'."
         ))
         def pve_call(
             method: Annotated[Literal["GET","POST","PUT","DELETE"], Field(description="HTTP method")],
             path: Annotated[str, Field(description="Concrete API path, e.g. 'nodes/pve/qemu/100/status/current'")],
             params: Annotated[Optional[dict], Field(description="Query or body parameters as a dict")] = None,
             skip_validation: Annotated[bool, Field(description="Bypass schema checks (for endpoints newer than the bundled schema)")] = False,
+            cluster: Annotated[Optional[str], Field(description="Configured cluster name. Defaults to the primary cluster.")] = None,
         ):
-            return self.apischema_tools.call(
+            return self._cluster_schema_tools(cluster).call(
                 method=method, path=path, params=params, skip_validation=skip_validation
             )
 

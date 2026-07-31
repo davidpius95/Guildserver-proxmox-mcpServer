@@ -6,3 +6,8 @@
 *.pyc
 *.log
 paas-backend
+.env
+.mcp.json
+proxmox-config/
+tasks/
+*.output

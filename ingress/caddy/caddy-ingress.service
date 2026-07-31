@@ -1,0 +1,28 @@
+[Unit]
+Description=Caddy ingress reverse proxy (Host-based routing for *.guildserver.io)
+Documentation=https://caddyserver.com/docs/
+After=network.target network-online.target
+Wants=network-online.target
+
+[Service]
+Type=notify
+User=caddy
+Group=caddy
+# /etc/caddy/caddy.json is REGENERATED from /etc/caddy/routes/*.json by
+# apply-routes on every add/remove, so the on-disk config is always the full
+# live route set — which is what makes routes survive a reboot.
+ExecStart=/usr/bin/caddy run --environ --config /etc/caddy/caddy.json
+ExecReload=/usr/bin/caddy reload --config /etc/caddy/caddy.json --force
+TimeoutStopSec=5s
+LimitNOFILE=1048576
+PrivateTmp=true
+# ProtectSystem=full would make /etc read-only; apply-routes needs to write
+# /etc/caddy/caddy.json, and Caddy itself must read it.
+ProtectSystem=true
+ReadWritePaths=/etc/caddy /var/lib/caddy
+AmbientCapabilities=CAP_NET_BIND_SERVICE
+Restart=on-failure
+RestartSec=2s
+
+[Install]
+WantedBy=multi-user.target

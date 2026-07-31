@@ -12,8 +12,28 @@ and valid before the server starts operation.
 """
 import json
 import os
+import re
 from typing import Optional
 from .models import Config
+
+ENV_PATTERN = re.compile(r"^\$\{([A-Za-z_][A-Za-z0-9_]*)\}$")
+
+
+def _expand_env_refs(value):
+    """Resolve string values written as ${ENV_VAR}."""
+    if isinstance(value, dict):
+        return {k: _expand_env_refs(v) for k, v in value.items()}
+    if isinstance(value, list):
+        return [_expand_env_refs(v) for v in value]
+    if isinstance(value, str):
+        match = ENV_PATTERN.match(value)
+        if match:
+            name = match.group(1)
+            resolved = os.getenv(name)
+            if resolved is None:
+                raise ValueError(f"Missing required environment variable: {name}")
+            return resolved
+    return value
 
 def load_config(config_path: Optional[str] = None) -> Config:
     """Load and validate configuration from JSON file.
@@ -93,7 +113,7 @@ def load_config(config_path: Optional[str] = None) -> Config:
 
     try:
         with open(config_path) as f:
-            config_data = json.load(f)
+            config_data = _expand_env_refs(json.load(f))
             if not config_data.get('proxmox', {}).get('host'):
                 raise ValueError("Proxmox host cannot be empty")
             return Config(**config_data)
