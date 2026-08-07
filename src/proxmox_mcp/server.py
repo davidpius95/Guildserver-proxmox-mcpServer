@@ -55,6 +55,7 @@ from .tools.definitions import (
     RESET_VM_DESC,
     DELETE_VM_DESC,
     GET_CONTAINERS_DESC,
+    EXECUTE_CONTAINER_COMMAND_DESC,
     START_CONTAINER_DESC,
     STOP_CONTAINER_DESC,
     RESTART_CONTAINER_DESC,
@@ -163,7 +164,12 @@ class ProxmoxMCPServer:
         self.vm_tools = VMTools(self.proxmox)
         self.storage_tools = StorageTools(self.proxmox)
         self.cluster_tools = ClusterTools(self.proxmox)
-        self.container_tools = ContainerTools(self.proxmox)
+        self.container_tools = ContainerTools(
+            self.proxmox,
+            ssh_config=self.config.ssh,
+            proxmox_config=self.config.proxmox,
+            auth_config=self.config.auth,
+        )
         self.generic_tools = GenericTools(self.proxmox)
         self.apischema_tools = ApiSchemaTools(self.proxmox)
         self.apischema_tools_by_cluster = {
@@ -658,6 +664,18 @@ class ProxmoxMCPServer:
         @self.mcp.tool(description=GET_CONTAINERS_DESC)
         def get_containers():
             return self.container_tools.get_containers(format_style="json")
+
+        @self.mcp.tool(description=EXECUTE_CONTAINER_COMMAND_DESC)
+        async def execute_container_command(
+            node: Annotated[str, Field(description="Host node name (e.g. 'nodeA')")],
+            vmid: Annotated[str, Field(description="Container ID (e.g. '910')")],
+            command: Annotated[str, Field(description="Shell command to run inside the container")],
+            timeout: Annotated[int, Field(description="Seconds before giving up")] = 60,
+            backend: Annotated[str, Field(description="'auto', 'ssh', or 'termproxy'")] = "auto",
+        ):
+            return await self.container_tools.execute_command(
+                node, vmid, command, timeout=timeout, backend=backend
+            )
 
         # Phase 1: Container read-only
         @self.mcp.tool(description=GET_CONTAINER_STATUS_DESC)

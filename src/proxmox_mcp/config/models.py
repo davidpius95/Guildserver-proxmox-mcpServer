@@ -1,9 +1,30 @@
 """Configuration models for the Proxmox MCP server."""
 from __future__ import annotations
 
-from typing import List, Optional
+from typing import Dict, List, Optional
 
 from pydantic import BaseModel, Field
+
+
+class SSHConfig(BaseModel):
+    """SSH access to the Proxmox nodes themselves.
+
+    Used by ``execute_container_command`` to run ``pct exec`` on the node
+    hosting a container -- the Proxmox API has no LXC exec endpoint, so this
+    is the only way to get real exit codes and clean stdout/stderr.
+
+    ``hosts`` overrides the address for a given node name; when a node is not
+    listed the address is resolved from ``GET /cluster/status``.
+    """
+
+    enabled: bool = True
+    user: str = "root"
+    port: int = 22
+    key_file: Optional[str] = None
+    connect_timeout: int = 10
+    strict_host_key_checking: str = "accept-new"
+    known_hosts_file: Optional[str] = None
+    hosts: Dict[str, str] = Field(default_factory=dict)
 
 
 class ProxmoxConfig(BaseModel):
@@ -45,5 +66,6 @@ class Config(BaseModel):
     proxmox: ProxmoxConfig
     auth: AuthConfig
     logging: LoggingConfig = Field(default_factory=LoggingConfig)
+    ssh: SSHConfig = Field(default_factory=SSHConfig)
     default_cluster: Optional[str] = None
     clusters: List[ClusterConfig] = Field(default_factory=list)

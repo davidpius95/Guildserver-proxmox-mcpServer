@@ -146,6 +146,21 @@ def write_node_configs(inv: dict) -> list[Path]:
         "proxmox": default_cluster["proxmox"],
         "auth": default_cluster["auth"],
         "clusters": clusters,
+        "ssh": {
+            **{
+                "enabled": True,
+                "user": "root",
+                "port": 22,
+                # Mounted read-only by docker-compose; see write_compose().
+                "key_file": "/app/ssh/id_node",
+                "connect_timeout": 10,
+                "strict_host_key_checking": "accept-new",
+                # Node addresses are resolved from /cluster/status when a node
+                # is not listed here.
+                "hosts": {},
+            },
+            **inv.get("ssh", {}),
+        },
         "logging": {
             "level": default.get("log_level", d.get("log_level", "INFO")),
             "format": "%(asctime)s - multi-cluster - %(name)s - %(levelname)s - %(message)s",
@@ -184,6 +199,8 @@ def write_compose(inv: dict) -> None:
         "    - ./.env\n",
         "  volumes:\n",
         "    - ./proxmox-config:/app/proxmox-config:ro\n",
+        "    # Node SSH key backing execute_container_command's `pct exec` path.\n",
+        '    - "${PROXMOX_MCP_SSH_KEY:-$HOME/.ssh/proxmox_guild_a}:/app/ssh/id_node:ro"\n',
         "  restart: unless-stopped\n",
         "  networks:\n",
         "    - proxmox-network\n",

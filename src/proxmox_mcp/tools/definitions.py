@@ -227,6 +227,28 @@ disk* - Disk name (e.g. 'scsi0')
 size* - Resize string (e.g. '+10G')
 """
 
+EXECUTE_CONTAINER_COMMAND_DESC = """Execute a shell command inside a running LXC container.
+
+The Proxmox API has no LXC exec endpoint (pct exec is CLI-only), so this runs
+`pct exec` on the hosting node over SSH and falls back to the termproxy console
+websocket when SSH is unavailable.
+
+Parameters:
+node* - Host node name (e.g. 'nodeA')
+vmid* - Container ID (e.g. '910')
+command* - Shell command to run (e.g. 'systemctl is-active nginx')
+timeout - Seconds before giving up (default 60)
+backend - 'auto' (default), 'ssh', or 'termproxy'
+
+Notes:
+- Container must be running; use start_container first.
+- The 'ssh' backend gives real exit codes and separate stdout/stderr.
+- The 'termproxy' backend is a PTY: streams are merged and "streams_merged"
+  is set on the result.
+
+Example:
+{"success": true, "output": "active\\n", "exit_code": 0, "backend": "ssh"}"""
+
 GET_CONTAINER_STATUS_DESC = """Get container status (maps to /nodes/{node}/lxc/{vmid}/status/current).
 
 Parameters:

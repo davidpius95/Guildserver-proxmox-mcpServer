@@ -2,6 +2,7 @@ from typing import List, Dict, Optional, Tuple, Any, Union
 import json
 from mcp.types import TextContent as Content
 from .base import ProxmoxTool
+from .console.container_manager import LXCConsoleManager
 
 
 def _b2h(n: Union[int, float, str]) -> str:
@@ -56,8 +57,26 @@ class ContainerTools(ProxmoxTool):
     - Live stats via /status/current
     - Limit fallback via /config (memory MiB, cores/cpulimit)
     - RRD fallback when live returns zeros
+    - Executes commands inside containers (ssh/pct exec, termproxy fallback)
     - Pretty output rendered here; JSON path is raw & sanitized
     """
+
+    def __init__(self, proxmox_api, ssh_config=None, proxmox_config=None, auth_config=None):
+        """Initialize container tools.
+
+        Args:
+            proxmox_api: Initialized ProxmoxAPI instance
+            ssh_config: SSHConfig for reaching nodes (enables `pct exec`)
+            proxmox_config: ProxmoxConfig, needed for the termproxy websocket URL
+            auth_config: AuthConfig, needed to authenticate the websocket upgrade
+        """
+        super().__init__(proxmox_api)
+        self.console_manager = LXCConsoleManager(
+            proxmox_api,
+            ssh_config=ssh_config,
+            proxmox_config=proxmox_config,
+            auth_config=auth_config,
+        )
 
     # ---------- error / output ----------
     def _json_fmt(self, data: Any) -> List[Content]:
@@ -359,6 +378,34 @@ class ContainerTools(ProxmoxTool):
             return self._json_fmt({"task": result})
         except Exception as e:
             return self._err(f"Failed to rollback container snapshot {node}:{vmid}:{snapname}", e)
+
+    async def execute_command(
+        self,
+        node: str,
+        vmid: str,
+        command: str,
+        timeout: int = 60,
+        backend: str = "auto",
+    ) -> List[Content]:
+        """Execute a shell command inside a running LXC container.
+
+        The Proxmox API has no LXC exec endpoint, so this runs `pct exec` on the
+        hosting node over SSH, falling back to the termproxy console websocket
+        when SSH is unavailable. See console/container_manager.py.
+
+        Maps to: SSH `pct exec {vmid}` on {node}, or
+                 POST /nodes/{node}/lxc/{vmid}/termproxy + vncwebsocket
+        """
+        try:
+            result = await self.console_manager.execute_command(
+                node, vmid, command, timeout=timeout, backend=backend
+            )
+            return self._json_fmt(result)
+        except ValueError:
+            # Missing/stopped container or bad arguments: surface as-is.
+            raise
+        except Exception as e:
+            return self._err(f"execute command in container {node}:{vmid}", e)
 
     # ---------- target resolution for control ops ----------
     def _resolve_targets(self, selector: str) -> List[Tuple[str, int, str]]:

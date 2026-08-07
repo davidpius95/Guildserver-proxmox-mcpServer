@@ -5,9 +5,12 @@ FROM python:3.11-slim
 WORKDIR /app
 
 # Install system dependencies
+# openssh-client backs execute_container_command's `pct exec` path -- the
+# Proxmox API has no LXC exec endpoint.
 RUN apt-get update && apt-get install -y \
     git \
     curl \
+    openssh-client \
     && rm -rf /var/lib/apt/lists/*
 
 # Install Python dependencies

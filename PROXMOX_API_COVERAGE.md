@@ -25,6 +25,10 @@ Legend:
 - [Implemented] POST /start_container → POST /nodes/{node}/lxc/{vmid}/status/start
 - [Implemented] POST /stop_container → POST /nodes/{node}/lxc/{vmid}/status/{stop|shutdown}
 - [Implemented] POST /restart_container → POST /nodes/{node}/lxc/{vmid}/status/reboot
+- [Implemented] POST /execute_container_command → SSH `pct exec` on the hosting node,
+  falling back to POST /nodes/{node}/lxc/{vmid}/termproxy + GET .../vncwebsocket.
+  Note: the Proxmox API has **no** LXC exec endpoint -- there is no REST equivalent
+  of `pct exec`, so this cannot be a straight endpoint mapping like the VM agent exec.
 - [Implemented] POST /get_storage → GET /storage (+ per-node storage status)
 - [Implemented] POST /get_storage_content → GET /nodes/{node}/storage/{storage}/content
 - [Implemented] POST /get_cluster_status → GET /cluster/status
@@ -52,7 +56,7 @@ Legend:
 - [Planned] POST /nodes/{node}/lxc (create), DELETE /nodes/{node}/lxc/{vmid}
 - [Planned] GET/POST /nodes/{node}/lxc/{vmid}/config (update)
 - [Planned] Snapshot ops: /nodes/{node}/lxc/{vmid}/snapshot (list/create/rollback/delete)
-- [Planned] Console/VNC where supported
+- [Implemented] Console: termproxy + vncwebsocket, driven by execute_container_command
 
 ### Storage
 - [Planned] GET /nodes/{node}/storage/{storage}/content (list)

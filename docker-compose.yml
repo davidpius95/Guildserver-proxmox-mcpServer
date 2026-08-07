@@ -8,6 +8,8 @@ x-node-common: &node-common
     - ./.env
   volumes:
     - ./proxmox-config:/app/proxmox-config:ro
+    # Node SSH key backing execute_container_command's `pct exec` path.
+    - "${PROXMOX_MCP_SSH_KEY:-$HOME/.ssh/proxmox_guild_a}:/app/ssh/id_node:ro"
   restart: unless-stopped
   networks:
     - proxmox-network
