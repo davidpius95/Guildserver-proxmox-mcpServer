@@ -1,8 +1,12 @@
 {
   "mcpServers": {
     "proxmox-guild-a": {
-      "command": "docker",
+      "command": "ssh",
       "args": [
+        "-i",
+        "~/.ssh/proxmox_guild_a",
+        "guildvm@100.64.198.100",
+        "docker",
         "exec",
         "-i",
         "proxmox-mcp-guild-a",

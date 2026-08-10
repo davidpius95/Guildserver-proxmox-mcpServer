@@ -4,6 +4,10 @@ How to reach the Proxmox hosts and their guests from any machine, on or off the 
 
 > Cluster-wide source of truth (inventory, storage, networking, change log, open
 > items): **[CLUSTER.md](CLUSTER.md)**. This file is the SSH-specific detail.
+>
+> Connecting an **MCP client** (Claude Desktop/Code) to the hosted Proxmox MCP
+> server remotely — including granting access to someone else — is a related but
+> separate topic: **[REMOTE_MCP_ACCESS.md](REMOTE_MCP_ACCESS.md)**.
 
 ---
 
