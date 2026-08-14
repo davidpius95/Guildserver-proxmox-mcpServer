@@ -19,7 +19,7 @@ the current-state record.
 | Nodes | 5, all online, **quorate** |
 | Guests | 5 VMs (4 workload + PDM, all on VLAN 50), 4 LXC containers (on the main LAN) |
 | Templates | 9000 Ubuntu 26.04 · 9001 Debian 13 — both on shared storage |
-| Management | Proxmox Datacenter Manager at **https://datacenter.guildserver.io** |
+| Management | Proxmox Datacenter Manager at **https://datacenter.guild-technologies.com** |
 | Shared storage | Ceph RBD pool `ceph-vm`, **HEALTH_OK** |
 | Management LAN | `192.168.8.0/24`, gateway `192.168.8.1` (GL-MT6000) |
 | Guest VLAN | VLAN 50 → `192.168.50.0/24`, gateway `192.168.50.1` |
@@ -143,7 +143,7 @@ recipe, and the traps hit while building them: **[TEMPLATE.md](TEMPLATE.md)**.
 | 200 | `pdm-datacenter` | nodeB | `192.168.50.197` | Proxmox Datacenter Manager 1.1.7, UI on `:8443` |
 | 220 | `netboot-xyz` | nodeE | `192.168.8.20`, `192.168.50.20` | netboot.xyz 3.0.2, dashboard on `:3000`, TFTP on `:69/udp`, local assets on `:8080` |
 
-**Live at https://datacenter.guildserver.io** via Cloudflare Tunnel (`cloudflared`
+**Live at https://datacenter.guild-technologies.com** via Cloudflare Tunnel (`cloudflared`
 systemd service on the VM, enabled at boot; valid Let's Encrypt edge certificate).
 
 The Guild-A cluster is **enrolled** as PDM remote `guild-a`, authenticating with the
@@ -276,7 +276,7 @@ no-password escape hatch, and it works for containers only.
     cloud image), a 401ing enterprise repo, and a missing guest agent. Details in
     [PDM.md](PDM.md) §5.
 16. **Cloudflare Tunnel live** — `cloudflared` connected with the owner's token;
-    `https://datacenter.guildserver.io` verified serving PDM (HTTP 200, repeated
+    `https://datacenter.guild-technologies.com` verified serving PDM (HTTP 200, repeated
     requests, valid Let's Encrypt edge cert). Connector settles on 3 of 4 QUIC
     connections — stable and still redundant, left as-is.
 17. **Cluster enrolled in PDM** as remote `guild-a` via API token `root@pam!pdm`
@@ -372,7 +372,7 @@ Also: `ssh -i key -J host dest` does not pass `-i` to the **jump** hop — the c
 
 ### Opened by the PDM deployment
 
-- [ ] **`datacenter.guildserver.io` is publicly reachable** with only PDM's own login in
+- [ ] **`datacenter.guild-technologies.com` is publicly reachable** with only PDM's own login in
       front of it — and PDM holds credentials to all 5 nodes. Put **Cloudflare Access**
       on it (Zero Trust → Access → Applications → self-hosted, policy = your email).
       This is the highest-value item on this list.
@@ -387,13 +387,29 @@ Also: `ssh -i key -J host dest` does not pass `-i` to the **jump** hop — the c
 
 ---
 
-## 10. Related docs
+## 10. Adding new nodes to the cluster
+
+When a new node joins Guild-A:
+
+```bash
+ssh root@<new-node>
+curl -fsSL <url>/node-postinstall.sh | bash
+```
+
+The script configures the node identically to existing members: OS updates, Tailscale,
+VLAN 50 bridge, packages, security, cluster verification. It's **idempotent** and safe
+to re-run. See **[NODE_POSTINSTALL.md](NODE_POSTINSTALL.md)** for full instructions.
+
+---
+
+## 11. Related docs
 
 | Doc | Covers |
 | --- | ------ |
+| [NODE_POSTINSTALL.md](NODE_POSTINSTALL.md) | Automated bootstrap script for new cluster nodes |
 | [VLAN50.md](VLAN50.md) | VLAN 50 topology, verification ladder, traps, triage table |
 | [TEMPLATE.md](TEMPLATE.md) | VM templates 9000 / 9001 — cloning, resizing, rebuild recipe |
-| [PDM.md](PDM.md) | Proxmox Datacenter Manager at `datacenter.guildserver.io` |
+| [PDM.md](PDM.md) | Proxmox Datacenter Manager at `datacenter.guild-technologies.com` |
 | [CLUSTER_SSH.md](CLUSTER_SSH.md) | SSH access, new-PC setup, console fallback, guest agent |
 | [NODES.md](NODES.md) | Node inventory |
 | [CEPH.md](CEPH.md) | Ceph storage |
