@@ -68,13 +68,13 @@ Store it in a location accessible from any node without auth:
 ```bash
 # Example: on the ingress/Caddy VM
 scp node-postinstall.sh guildvm@192.168.50.197:/var/www/guild-a/
-# Access it at: https://datacenter.guildserver.io/scripts/node-postinstall.sh
+# Access it at: https://datacenter.guild-technologies.com/scripts/node-postinstall.sh
 ```
 
 Then new nodes fetch it:
 
 ```bash
-curl -fsSL https://datacenter.guildserver.io/scripts/node-postinstall.sh | bash
+curl -fsSL https://datacenter.guild-technologies.com/scripts/node-postinstall.sh | bash
 ```
 
 ### Option 3: Baked into Proxmox cloud-init (advanced)
