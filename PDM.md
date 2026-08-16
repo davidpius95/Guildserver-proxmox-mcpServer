@@ -1,4 +1,4 @@
-# Proxmox Datacenter Manager — `datacenter.guildserver.io`
+# Proxmox Datacenter Manager — `datacenter.guild-technologies.com`
 
 PDM deployment for the Guild-A cluster: what runs where, how to reach it, and the
 remaining Cloudflare step.
@@ -48,13 +48,13 @@ browser will warn — expected.
 
 ---
 
-## 3. Publishing it at datacenter.guildserver.io
+## 3. Publishing it at datacenter.guild-technologies.com
 
-`guildserver.io` is on Cloudflare (`sergi`/`gemma.ns.cloudflare.com`), so a **Cloudflare
+`guild-technologies.com` is on Cloudflare (`sergi`/`gemma.ns.cloudflare.com`), so a **Cloudflare
 Tunnel** is the right mechanism — no port-forwarding, no inbound firewall holes, and
 the VM keeps no public IP.
 
-**Status: LIVE.** `https://datacenter.guildserver.io` serves PDM over the tunnel —
+**Status: LIVE.** `https://datacenter.guild-technologies.com` serves PDM over the tunnel —
 verified HTTP 200 across repeated requests (0.5–1.3 s), with a valid Let's Encrypt
 certificate from Cloudflare's edge (no browser warning, unlike hitting `:8443` directly).
 
@@ -89,7 +89,7 @@ Tunnel → **Public Hostnames** → Add:
 | Field | Value |
 | ----- | ----- |
 | Subdomain | `datacenter` |
-| Domain | `guildserver.io` |
+| Domain | `guild-technologies.com` |
 | Type | **HTTPS** |
 | URL | `localhost:8443` |
 | Additional settings → **No TLS Verify** | **enabled** |
@@ -97,7 +97,7 @@ Tunnel → **Public Hostnames** → Add:
 **`No TLS Verify` is required.** PDM serves a self-signed certificate; without this
 flag the tunnel returns `502` and looks broken when it is not.
 
-> ⚠️ `datacenter.guildserver.io` **already resolves** to Cloudflare proxy IPs
+> ⚠️ `datacenter.guild-technologies.com` **already resolves** to Cloudflare proxy IPs
 > (`104.21.15.93`, `172.67.205.172`), so a record already exists. The tunnel route will
 > conflict with it — replace the existing record rather than adding another.
 
@@ -107,7 +107,7 @@ PDM holds credentials to the **entire cluster**. A public URL where the only thi
 between the internet and five nodes is PDM's own login is a large exposure.
 
 Zero Trust → **Access → Applications** → Add → Self-hosted:
-- Domain `datacenter.guildserver.io`
+- Domain `datacenter.guild-technologies.com`
 - Policy: Allow → Emails → your address
 
 That turns a public admin panel into one only you can open, and costs nothing.
@@ -215,7 +215,7 @@ Useful checks:
 ```bash
 systemctl is-active cloudflared
 sudo journalctl -u cloudflared -n 30 --no-pager
-curl -s -o /dev/null -w '%{http_code}\n' https://datacenter.guildserver.io/
+curl -s -o /dev/null -w '%{http_code}\n' https://datacenter.guild-technologies.com/
 ```
 
 ### 5.5 `software-properties-common` does not exist in Debian Trixie

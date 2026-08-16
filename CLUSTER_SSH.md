@@ -15,11 +15,26 @@ How to reach the Proxmox hosts and their guests from any machine, on or off the 
 
 | Target | Address | Reachable from outside the LAN? |
 | ------ | ------- | ------------------------------- |
-| Proxmox nodes | Tailscale `100.x` | **Yes** — all 5 nodes are on the tailnet |
+| Proxmox hosts | Tailscale `100.x` | **Yes** — all 11 hosts are on the tailnet |
 | VMs / containers | LAN `192.168.8.x` | **Not directly** — no subnet route is advertised |
 
-So: nodes are directly reachable from anywhere via Tailscale; guests are reached by
-**jumping through a node** (`ProxyJump`). One `~/.ssh/config` makes both transparent.
+So: hosts are directly reachable from anywhere via Tailscale; guests are reached by
+**jumping through a host** (`ProxyJump`). One `~/.ssh/config` makes both transparent.
+
+> **This was broken until 2026-08-16.** Every host was reachable only from its own LAN,
+> because Proxmox SDN/EVPN moves the `local` route table to priority 32765 and
+> Tailscale's fwmark-`0x80000` `unreachable` rule then swallowed every reply. Three
+> further bugs (watchdog restart storm, an SSH ACL that matched nothing, Tailscale SSH
+> never enabled) stacked on top. Full write-up, diagnostics, and the fixes:
+> **[TAILSCALE.md](TAILSCALE.md)** — read that first if remote access misbehaves.
+>
+> When testing remote access, **test from a machine that is genuinely off-LAN**. A
+> machine on `192.168.8.0/24` takes a direct path and will succeed even when remote
+> access is completely broken.
+
+Tailscale SSH is enabled on every host, so no key is required — authentication is by
+tailnet identity: `ssh root@<node-ts-ip>`. The key-based flow below still works and is
+the fallback when jumping to guests.
 
 ### Tailscale addresses
 
@@ -30,6 +45,10 @@ So: nodes are directly reachable from anywhere via Tailscale; guests are reached
 | nodeC | 100.100.168.81 | 192.168.8.156 |
 | nodeD | 100.111.121.55 | 192.168.8.195 |
 | nodeE | 100.118.149.95 | 192.168.8.125 |
+
+The six Guild-B hosts (podA–podF) are also on the tailnet with Tailscale SSH enabled.
+Their addresses are not listed here because this repo is public — see
+[CLUSTER.md](CLUSTER.md) or run `tailscale status`.
 
 ---
 

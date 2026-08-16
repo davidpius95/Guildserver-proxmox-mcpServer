@@ -1,0 +1,14 @@
+[Unit]
+Description=Restore 'local' routing table priority for Tailscale on Proxmox SDN/EVPN hosts
+Documentation=see /usr/local/sbin/fix-localrule.sh
+After=network-online.target
+Wants=network-online.target
+Before=tailscaled.service
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+ExecStart=/usr/local/sbin/fix-localrule.sh
+
+[Install]
+WantedBy=multi-user.target

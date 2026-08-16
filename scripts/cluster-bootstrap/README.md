@@ -68,13 +68,13 @@ Store it in a location accessible from any node without auth:
 ```bash
 # Example: on the ingress/Caddy VM
 scp node-postinstall.sh guildvm@192.168.50.197:/var/www/guild-a/
-# Access it at: https://datacenter.guild-technologies.com/scripts/node-postinstall.sh
+# Access it at: https://datacenter.guildserver.io/scripts/node-postinstall.sh
 ```
 
 Then new nodes fetch it:
 
 ```bash
-curl -fsSL https://datacenter.guild-technologies.com/scripts/node-postinstall.sh | bash
+curl -fsSL https://datacenter.guildserver.io/scripts/node-postinstall.sh | bash
 ```
 
 ### Option 3: Baked into Proxmox cloud-init (advanced)
@@ -99,56 +99,6 @@ Get a reusable key from the Tailscale admin console:
   - **Preapproved**: ✓ (skip auth flow)
 
 Then paste it into your deployment automation.
-
-### Required for SDN/EVPN nodes — read this
-
-A node running Proxmox SDN (EVPN/VRF) **will look permanently "offline" on the tailnet**
-unless it also gets the policy-routing fix. SDN moves the `local` route table to
-priority 32765; Tailscale's fwmark-`0x80000` `unreachable` rule at 5250 then drops every
-reply to a tailscaled-initiated flow. The node stays reachable from its own LAN, which
-makes the fault easy to miss.
-
-Install alongside the post-install script:
-
-```bash
-install -m755 scripts/cluster-bootstrap/fix-localrule.sh /usr/local/sbin/
-install -m644 scripts/cluster-bootstrap/tailscale-localrule.service /etc/systemd/system/
-systemctl daemon-reload && systemctl enable --now tailscale-localrule.service
-```
-
-Verify: `tailscale netcheck` must report `UDP: true`. Full explanation and diagnostics:
-**[TAILSCALE.md](TAILSCALE.md)**.
-
-The script enables Tailscale SSH (`--ssh` plus an idempotent `tailscale set --ssh=true`),
-so hosts accept keyless `ssh root@<tailscale-ip>` by tailnet identity. Also deploy
-`scripts/cluster-bootstrap/tailscale-watchdog.sh` — and use **v2**; the original
-restarted tailscaled on any health warning and produced 1200–3100 restarts/day.
-
-### `host.fw` is per-node — the script does not create it
-
-`/etc/pve/local/host.fw` is **per-node, not cluster-wide**. A freshly joined node has no host
-firewall rules at all, which silently bypasses any cluster-wide intent (two Guild-B nodes
-were missing their G-19 rules entirely until 2026-08-16). Copy it from an existing node:
-
-```bash
-# from a node that already has the right rules
-cat /etc/pve/local/host.fw            # inspect, then recreate on the new node
-pve-firewall compile && pve-firewall restart
-```
-
-### Fresh nodes may have unusable apt
-
-A newly installed node ships with only the Proxmox **enterprise** repos, which return
-`401 Unauthorized` without a subscription — `apt-get update` fails and package installs
-(including Tailscale) die. Disable them and add the no-subscription equivalents before
-anything else:
-
-```
-/etc/apt/sources.list.d/proxmox.sources              pve-no-subscription
-/etc/apt/sources.list.d/ceph-no-subscription.sources no-subscription
-/etc/apt/sources.list.d/pve-enterprise.sources       Enabled: false
-/etc/apt/sources.list.d/ceph.sources                 Enabled: false
-```
 
 ---
 

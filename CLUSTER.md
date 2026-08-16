@@ -351,8 +351,47 @@ Also: `ssh -i key -J host dest` does not pass `-i` to the **jump** hop — the c
 
 ---
 
+### 8.x Proxmox SDN/EVPN silently breaks Tailscale
+
+SDN moves the `local` routing table from priority 0 to **32765**. Tailscale's rules assume
+it is still at 0, so replies to tailscaled-initiated flows hit `5250: unreachable` first and
+are discarded. Hosts stay reachable from their own LAN, which hides it completely.
+Fix: `ip rule add from all lookup local priority 5100`. Full detail in
+[TAILSCALE.md](TAILSCALE.md).
+
+### 8.x A thin volume can be bigger than the pool behind it
+
+PBS ran a 200 G volume on a 137 G pool. The pool filled, QEMU paused the VM with
+`io-error`, and nothing noticed for 36 hours. `lvs -o lv_size,data_percent,lv_attr` — the
+`D` in `twi-aotzD-` is the tell. See [BACKUPS.md](BACKUPS.md).
+
+### 8.x `host.fw` is per-node, not cluster-wide
+
+A freshly joined node has **no host firewall rules at all** until you add them, silently
+bypassing any cluster-wide intent. Two Guild-B nodes were missing the G-19 control
+entirely. `node-postinstall.sh` does not create it — check every new node.
+
+### 8.x Testing remote access from the LAN proves nothing
+
+A machine on the cluster subnet takes a direct path and succeeds even when remote access is
+completely broken. Always verify from a genuinely off-LAN vantage point.
+
+### 8.x Self-signed certs over 398 days are rejected by browsers
+
+The stock PBS certificate was valid for ~1000 years. Chrome throws
+`ERR_CERT_VALIDITY_TOO_LONG` and Safari offers no bypass, so the UI was unreachable from a
+browser while `curl -k` worked fine. Regenerate at ≤398 days with the real hostnames and IPs
+in the SAN.
+
 ## 9. Open items
 
+- [ ] **All nodes negotiate 100 Mb/s on gigabit NICs** — almost certainly a 10/100 switch.
+      Highest-value fix available; see [CAPACITY.md](CAPACITY.md).
+- [ ] **Longhorn volumes are all degraded** — 2 k8s nodes against a 3-replica default.
+- [ ] **The Home Assistant Grafana dashboard is not in git** — hand-applied ConfigMap,
+      lost on a cluster rebuild.
+- [ ] **PBS long-term placement** — it serves both clusters from Guild-A while Guild-B
+      sits on ~13.7 TB under 3 % used.
 - [ ] **CT 100 `ubuntu-ct-test`** has no SSH key — reachable only via `pct enter 100`
       from nodeA.
 - [ ] **All guest accounts are password-locked**, so no console login is possible.
@@ -407,6 +446,10 @@ to re-run. See **[NODE_POSTINSTALL.md](NODE_POSTINSTALL.md)** for full instructi
 | Doc | Covers |
 | --- | ------ |
 | [NODE_POSTINSTALL.md](NODE_POSTINSTALL.md) | Automated bootstrap script for new cluster nodes |
+| [TAILSCALE.md](TAILSCALE.md) | Remote access, the SDN/EVPN routing bug, watchdog, SSH ACLs |
+| [BACKUPS.md](BACKUPS.md) | PBS, vzdump jobs, thin-pool exhaustion, GC/prune |
+| [MONITORING.md](MONITORING.md) | Uptime Kuma, Prometheus/Grafana, Home Assistant/Growatt |
+| [CAPACITY.md](CAPACITY.md) | The 100 Mb link, headroom, workload placement, no-DRS reality |
 | [VLAN50.md](VLAN50.md) | VLAN 50 topology, verification ladder, traps, triage table |
 | [TEMPLATE.md](TEMPLATE.md) | VM templates 9000 / 9001 — cloning, resizing, rebuild recipe |
 | [PDM.md](PDM.md) | Proxmox Datacenter Manager at `datacenter.guild-technologies.com` |
