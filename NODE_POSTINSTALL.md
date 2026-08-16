@@ -124,6 +124,18 @@ so hosts accept keyless `ssh root@<tailscale-ip>` by tailnet identity. Also depl
 `scripts/cluster-bootstrap/tailscale-watchdog.sh` — and use **v2**; the original
 restarted tailscaled on any health warning and produced 1200–3100 restarts/day.
 
+### `host.fw` is per-node — the script does not create it
+
+`/etc/pve/local/host.fw` is **per-node, not cluster-wide**. A freshly joined node has no host
+firewall rules at all, which silently bypasses any cluster-wide intent (two Guild-B nodes
+were missing their G-19 rules entirely until 2026-08-16). Copy it from an existing node:
+
+```bash
+# from a node that already has the right rules
+cat /etc/pve/local/host.fw            # inspect, then recreate on the new node
+pve-firewall compile && pve-firewall restart
+```
+
 ### Fresh nodes may have unusable apt
 
 A newly installed node ships with only the Proxmox **enterprise** repos, which return

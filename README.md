@@ -73,6 +73,9 @@ This project is built upon the excellent open-source project [ProxmoxMCP](https:
 - Public deployment guide: see PUBLIC_DEPLOYMENT.md
 - Remote SSH into the cluster: see [CLUSTER_SSH.md](CLUSTER_SSH.md)
 - Tailscale remote access, known bugs and fixes: see [TAILSCALE.md](TAILSCALE.md)
+- Backups / PBS: see [BACKUPS.md](BACKUPS.md)
+- Monitoring (Kuma, Prometheus, Grafana): see [MONITORING.md](MONITORING.md)
+- Capacity, network limits, workload placement: see [CAPACITY.md](CAPACITY.md)
 
 
 ## Installation
