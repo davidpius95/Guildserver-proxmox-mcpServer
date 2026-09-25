@@ -450,6 +450,7 @@ to re-run. See **[NODE_POSTINSTALL.md](NODE_POSTINSTALL.md)** for full instructi
 | [BACKUPS.md](BACKUPS.md) | PBS, vzdump jobs, thin-pool exhaustion, GC/prune |
 | [MONITORING.md](MONITORING.md) | Uptime Kuma, Prometheus/Grafana, Home Assistant/Growatt |
 | [CAPACITY.md](CAPACITY.md) | The 100 Mb link, headroom, workload placement, no-DRS reality |
+| [OBOL_DVT.md](OBOL_DVT.md) | Obol DVT operator for Rocklogic's Hoodi cluster — placement, blockers, plan |
 | [VLAN50.md](VLAN50.md) | VLAN 50 topology, verification ladder, traps, triage table |
 | [TEMPLATE.md](TEMPLATE.md) | VM templates 9000 / 9001 — cloning, resizing, rebuild recipe |
 | [PDM.md](PDM.md) | Proxmox Datacenter Manager at `datacenter.guild-technologies.com` |

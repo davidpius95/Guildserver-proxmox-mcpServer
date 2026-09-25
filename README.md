@@ -76,6 +76,7 @@ This project is built upon the excellent open-source project [ProxmoxMCP](https:
 - Backups / PBS: see [BACKUPS.md](BACKUPS.md)
 - Monitoring (Kuma, Prometheus, Grafana): see [MONITORING.md](MONITORING.md)
 - Capacity, network limits, workload placement: see [CAPACITY.md](CAPACITY.md)
+- Obol DVT operator onboarding (Rocklogic Hoodi cluster): see [OBOL_DVT.md](OBOL_DVT.md)
 
 
 ## Installation
